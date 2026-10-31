@@ -67,7 +67,7 @@ where
 | $`g`$ | Gravitational acceleration |
 | $`H = h_B + h_C`$ | Reservoir thickness |
 
-Because the phases are immiscible with a sharp interface, the CO₂ saturation field is expressed in terms of the plume height $`h_C`$. Streamline Upwind (SU) stabilization is used for numerical stability (Ladubec et al., 2015; Ladubec & Gracie, 2017).
+Since the phases are immiscible with a sharp interface, the CO₂ saturation field is expressed in terms of the plume height $`h_C`$. Streamline Upwind (SU) stabilization is used for numerical stability (Ladubec et al., 2015; Ladubec & Gracie, 2017).
 
 **Assumptions:** infinite, fully saturated reservoir; sharp, immiscible CO₂–brine interface; incompressible brine, CO₂ and rock; constant fluid viscosities and densities; no capillary pressure, viscous fingering, thermal or chemical effects; homogeneous, linear isotropic permeability.
 
