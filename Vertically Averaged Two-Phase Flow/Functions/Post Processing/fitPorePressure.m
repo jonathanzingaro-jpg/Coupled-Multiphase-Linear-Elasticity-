@@ -1,0 +1,107 @@
+function [fittedParams, tenGaussianModel] = fitPorePressure(hb, p, disp_fig, r, z, R, Z, gBrine, gCO2, t0_toggle) 
+
+% Fit Gaussian to Pore Pressure over x and z
+        p_grid = zeros(length(z),length(r));
+
+            for k = 1:length(r)
+                for i = 1:length(z)
+                    if z(i) >= hb(k)
+                        p_grid(i,k) = (p(k) - (z(i)-hb(k))*gCO2 - hb(k)*gBrine)./1e6;
+                    else
+                        p_grid(i,k) = (p(k) - z(i)*gBrine)./1e6;
+                    end
+
+                end
+            end
+       
+
+        % Define the model with ten 2D Gaussians
+        tenGaussianModel = @(b, r, z) ...
+            b(1) * exp(-((r - b(2)).^2 / (2 * b(4)^2) + (z - b(3)).^2 / (2 * b(5)^2))) + ...
+            b(6) * exp(-((r - b(7)).^2 / (2 * b(9)^2) + (z - b(8)).^2 / (2 * b(10)^2))) + ...
+            b(11) * exp(-((r - b(12)).^2 / (2 * b(14)^2) + (z - b(13)).^2 / (2 * b(15)^2))) + ...
+            b(16) * exp(-((r - b(17)).^2 / (2 * b(19)^2) + (z - b(18)).^2 / (2 * b(20)^2))) + ...
+            b(21) * exp(-((r - b(22)).^2 / (2 * b(24)^2) + (z - b(23)).^2 / (2 * b(25)^2))) + ...
+            b(26) * exp(-((r - b(27)).^2 / (2 * b(29)^2) + (z - b(28)).^2 / (2 * b(30)^2))) + ...
+            b(31) * exp(-((r - b(32)).^2 / (2 * b(34)^2) + (z - b(33)).^2 / (2 * b(35)^2))) + ...
+            b(36) * exp(-((r - b(37)).^2 / (2 * b(39)^2) + (z - b(38)).^2 / (2 * b(40)^2))) + ...
+            b(41) * exp(-((r - b(42)).^2 / (2 * b(44)^2) + (z - b(43)).^2 / (2 * b(45)^2))) + ...
+            b(46) * exp(-((r - b(47)).^2 / (2 * b(49)^2) + (z - b(48)).^2 / (2 * b(50)^2))) + b(51);
+
+        % Flatten the X, Z, and p_grid matrices for the fitting function
+        xData = R(:);
+        zData = Z(:);
+        pData = p_grid(:);
+
+        % Initial guesses for the Gaussian parameters (10 Gaussians * 5 parameters each + 1 offset = 51 parameters)
+        initialGuess = repmat([max(pData), mean(xData), mean(zData), std(xData), std(zData)], 1, 10);
+        initialGuess = [initialGuess, min(pData)]; % Add the offset at the end
+
+        % Optional: Set lower and upper bounds for parameters
+        lb = [];
+        ub = [];
+
+        % Perform the fit using lsqcurvefit
+        opts = optimoptions('lsqcurvefit', 'Display', 'off');
+        fittedParams = lsqcurvefit(@(params, xzData) tenGaussianModel(params, xzData(:,1), xzData(:,2)), ...
+            initialGuess, [xData, zData], pData, lb, ub, opts);
+
+        % Reshape the fitted model to the grid for visualization
+        fittedPGrid = reshape(tenGaussianModel(fittedParams, R, Z), size(R));
+
+        if disp_fig == 1
+        % Visualization of the fitted surface as a flat color plot
+        figure;
+        set(gcf, 'Visible', 'on');
+        subplot(1, 2, 1);
+        imagesc(r, z, fittedPGrid);
+        title('Fitted 2D Gaussian Surface');
+        xlabel('X');
+        ylabel('Z');
+        axis xy; % Ensure correct orientation
+        colorbar; % Add a color bar to indicate scale
+        colormap jet; % Color map
+
+        % Calculate the discrete L2 error and normalize it
+        L2_error = sqrt(sum((pData - fittedPGrid(:)).^2) / numel(pData));
+
+        % Visualization of the normalized L2 error as a flat color plot
+        subplot(1, 2, 2);
+        errorSurface = reshape(pData - fittedPGrid(:), size(R));
+        imagesc(r, z, errorSurface);
+        title(sprintf('Normalized Discrete L2 Error: %.3f', L2_error));
+        xlabel('X');
+        ylabel('Z');
+        axis xy; % Ensure correct orientation
+        colorbar; % Add a color bar to indicate scale
+        colormap jet; % Color map
+
+        drawnow;
+
+        % Visualization of the fitted surface and the original data
+        figure(2);
+        set(gcf, 'Visible', 'on');
+
+        % Plot the original data as a 3D surface
+        h1 = surf(R, Z, p_grid, 'FaceColor', 'red', 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+        hold on; % Hold on to plot the fitted surface on the same axes
+
+        % Plot the fitted Gaussian surface
+        h2 = surf(R, Z, fittedPGrid, 'FaceColor', 'blue', 'FaceAlpha', 0.5, 'EdgeColor', 'none');
+
+        % Labels for each surface
+        labelPos1 = [mean(R(:)), mean(Z(:)), max(p_grid(:))];
+        labelPos2 = [mean(R(:)), mean(Z(:)), max(fittedPGrid(:))];
+        text(labelPos1(1), labelPos1(2), labelPos1(3), 'Original Data', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center', 'Color', 'black');
+        text(labelPos2(1), labelPos2(2), labelPos2(3), 'Fitted Model', 'VerticalAlignment', 'bottom', 'HorizontalAlignment', 'center', 'Color', 'white');
+
+        % General plot settings
+        title('Original Data and Fitted 4 Gaussian Surface');
+        xlabel('X');
+        ylabel('Z');
+        zlabel('Pore Pressure');
+        view(3); % Adjust view angle for better 3D visualization
+        hold off; % Release the hold to allow further plotting commands to affect new figures
+        drawnow;
+        end
+end
